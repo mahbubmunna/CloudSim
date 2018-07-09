@@ -13,46 +13,57 @@ public class KMeansClustering {
 	    this.setClist(clist);
 	    this.setDlist(dlist);
 	    
-	
+	    //initializer
 	    int i, n = 0;
 	    boolean flag;
-	    double latSum1=0, latSum2=0, longSum1=0, longSum2=0;
 	    
-	    double dis1, dis2, cenLat1, cenLat2, cenLon1, cenLon2;
-	   
+	    //create latSum and longSum array for calculating new Centroid 
+	    //create Centroids, previous Centroid holder, dataPoint latitude, longitude
+	    double latSum1=0, latSum2=0, longSum1=0, longSum2=0;	    
+	    double dis1, dis2, cenLat1, cenLat2, cenLon1, cenLon2;	   
 	    double lat, lon, a1, a2, b1, b2;
+	    
+	    //take initial datacenters as Centroid
 	    dcCharacteristics ax = (dcCharacteristics) dlist.get(0);
 	    dcCharacteristics bx = (dcCharacteristics) dlist.get(1);
 	    
+	    //populate with latitude and longitude to the Centroids
 	    cenLat1 = ax.getLatitude();
 	    cenLon1 = ax.getLongitude();
 	    cenLat2 = bx.getLatitude();
 	    cenLon2 = bx.getLongitude();
 	    
+	    //create the clusters for Datacenter and Cloudlets
 	    ArrayList<Integer> cluster1 = new ArrayList<Integer>();
 	    ArrayList<Integer> cluster2 = new ArrayList<Integer>();
-	    
 	    ArrayList<Integer> cloudletCluster1 = new ArrayList<Integer>();
 	    ArrayList<Integer> cloudletCluster2 = new ArrayList<Integer>();
 	    
+	    //may not needed
 	    int cl1[] = new int[clist.size()], cl2[] = new int[clist.size()];
+	    
 	    do {
+	    	//reseter
 	        latSum1=0;
 	        latSum2=0;
 	        longSum1=0;
 	        longSum2=0;
 	        
-	        cluster1.removeAll(cluster1);
-	        cluster2.removeAll(cluster2);
-	        cloudletCluster1.removeAll(cloudletCluster1);
-	        cloudletCluster2.removeAll(cloudletCluster2);
+	        cluster1.clear();
+	        cluster2.clear();
+	        cloudletCluster1.clear();
+	        cloudletCluster2.clear();
 	        
+	        //increment the iterator counter
 	        n++;
+	        
+	        //maybe not needed
 	        int k = 0, j = 0;
 	        
+	        //take datacenter from datacenter list and make cluster
 	        for (i = 0; i < clist.size(); i++) {
 	            dcCharacteristics d = (dcCharacteristics) dlist.get(i);
-	            clet c = (clet) clist.get(i);
+
 	            lat = d.getLatitude();
 	            lon = d.getLongitude();
 	            
@@ -71,6 +82,9 @@ public class KMeansClustering {
 	                cl2[j] = i;
 	                j++;
 	            }
+	            
+	            //take cloudlet from cloudlet list and cluster them
+	            clet c = (clet) clist.get(i);
 	            lat = c.getLatitude();
 	            lon = c.getLongitude();
 	            dis1 = KMeansClustering.getDistance(cenLat1, cenLon1, lat, lon);
@@ -84,6 +98,7 @@ public class KMeansClustering {
 	            
 	          
 	        }
+	        // calculate all sum of datacenter datapoints and determine new centroid
 	        System.out.println();
 	        for (i = 0; i < k; i++) {
 	            //clet clt = (clet) clist.get(cl1[i]);
@@ -96,8 +111,7 @@ public class KMeansClustering {
 	            latSum2 += dcC1.getLatitude();
 	            longSum2 += dcC1.getLongitude();
 	        }
-	        //printing Centroids/Means\
-	        //System.out.println("m1=" + m1 + "   m2=" + m2);
+	        
 	        a1 = cenLat1;
 	        a2 = cenLon1;
 	        b1 = cenLat2;
@@ -106,8 +120,10 @@ public class KMeansClustering {
 	        cenLon1 = longSum1/k;
 	        cenLat2= latSum2/j;
 	        cenLon2 = longSum2/j;
+	        //make flag false if cluster become stable
 	        flag =! (cenLat1 == a1 && cenLon1 == a2 && cenLat2 == b1 && cenLon2 == b2);
-	
+	        
+	        //printing new cluster after every iteration
 	        System.out.println("After iteration " + n + " , cluster 1 :\n");    //printing the clusters of each iteration
 	        
 	        System.out.print(cluster1);
@@ -118,9 +134,11 @@ public class KMeansClustering {
 	        System.out.print(cluster2);
 	        
 	        if(n>100) break;
-	    } while (flag);
+	    } while (flag);//Exit loop if cluster become stable
 	    
-	System.out.println();
+	    
+	    //printing final clusters
+	    System.out.println();
 	    System.out.println("Final cluster 1 :\n");            // final clusters
 	    
 	    System.out.print("Datacenter id: ");
@@ -138,6 +156,7 @@ public class KMeansClustering {
 	    
 	}
 
+	//Distance calculating method
   public static double getDistance(double lat1, double lon1, double lat2, double lon2) {
       KMeansClustering kl = new KMeansClustering();
   	double R = 6371; // Radius of the earth in km
@@ -149,11 +168,13 @@ public class KMeansClustering {
       return d;
   }
 
-
+  //distance calculating method helper method
   double deg2rad(double deg) {
       return deg * (Math.PI/180);
   }
-
+  
+  
+  //These maybe unnecessary 
 	public List<Cloudlet> getClist() {
 		return clist;
 	}

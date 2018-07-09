@@ -5,13 +5,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
-//import java.util.Map;
-import java.util.Random;
-
 import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.Datacenter;
 import org.cloudbus.cloudsim.DatacenterBroker;
+import org.cloudbus.cloudsim.DatacenterCharacteristics;
 import org.cloudbus.cloudsim.Host;
 import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Pe;
@@ -21,75 +19,57 @@ import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.VmSchedulerSpaceShared;
-import cloudsim.clet;
-//import org.cloudbus.cloudsim.datacenterBrokerNew;
-import cloudsim.dcCharacteristics;
-//import org.cloudbus.cloudsim.newBroker;
 import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.core.SimEntity;
+import org.cloudbus.cloudsim.core.SimEvent;
 import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 
 /**
  *
- * @author Mahbub
+ * @author Mário Pardo
  */
-public class Main {
+public class TwoDatacenters10VMs5ForEach {
     
     private static List<Cloudlet> cloudletList;
     private static List<Vm> vmlist;
-    public static List<dcCharacteristics> datacenterList = new ArrayList<dcCharacteristics>();
     
-    public static void main(String[] args) throws Exception {
-        int num_user = 100;
+    public static void main(String[] args) {
+        int num_user = 2;
         Calendar calendar = Calendar.getInstance();
         boolean trace_flag = false;
         CloudSim.init(num_user, calendar, trace_flag);
 
   
-        //Creating 10 Datacenters - each one has 1 host with 5 PEs
-        int i;
-        Datacenter[] dc = new Datacenter[10];
-        for(i=0; i<10; i++){
-        	//@SuppressWarnings("unused")
-        	dc[i] = createDatacenter("DC"+i, 1);
-        }
-        
-        DatacenterBroker brk = null;
-        for(i=0; i<10; i++){
-        	brk = createBroker("broker"+i);
-        }
-        vmlist = createVM(brk.getId(), 10, 1);
-        cloudletList = createCloudlet(brk.getId(), 10, 1);
-        
-        brk.submitCloudletList(cloudletList);
-        brk.submitVmList(vmlist);
+        //Creating 2 Datacenters - each one has 1 host with 5 PEs
+        Datacenter dc1 = createDatacenter("DC1", 1);
+        Datacenter dc2 = createDatacenter("DC2", 1);
         
         
+        DatacenterBroker brk1 = createBroker("broker1");
+        brk1.submitVmList(createVM(brk1.getId(), 5, 1));
+        brk1.submitCloudletList(createCloudlet(brk1.getId(), 5, 1));
         
-        List<Integer> result1 = new ArrayList<Integer>();
-        result1 = display();
+        DatacenterBroker brk2 = createBroker("broker2");
+        brk2.submitVmList(createVM(brk2.getId(), 5, 1001));
+        brk2.submitCloudletList(createCloudlet(brk2.getId(), 5, 1001));   
         
-        i=1;
-        for(Integer r : result1){
-        	brk.bindCloudletToVm(i, r-1);
-        	i++;
-        }
+        CloudSim.startSimulation();
         
-        CloudSim.startSimulation();        
+        List<Cloudlet> newList = brk1.getCloudletReceivedList();
+        newList.addAll(brk2.getCloudletReceivedList());
+        
         CloudSim.stopSimulation();
         
-        display();
-        printCloudletList(cloudletList);
+        printCloudletList(newList);
         
-        KMeansCluster kmc = new KMeansCluster();
-        kmc.kmeans(cloudletList, datacenterList);
-        
+       
     }
     
     private static List<Vm> createVM(int userId, int vms, int idShift) {
         //Creates a container to store VMs. This list is passed to the broker later
-        List<Vm> vlist = new LinkedList<Vm>();
+        LinkedList<Vm> list = new LinkedList<Vm>();
 
         //VM Parameters
         long size = 10000; //image size (MB)
@@ -104,15 +84,15 @@ public class Main {
         
         for (int i = 0; i < vms; i++) {
             vm[i] = new Vm(idShift + i, userId, mips, pesNumber, ram, bw, size, vmm, new CloudletSchedulerSpaceShared());
-            vlist.add(vm[i]);
+            list.add(vm[i]);
         }
         
-        return vlist;
+        return list;
     }
     
     private static List<Cloudlet> createCloudlet(int userId, int cloudlets, int idShift) {
         // Creates a container to store Cloudlets
-        List<Cloudlet> clist = new LinkedList<Cloudlet>();
+        LinkedList<Cloudlet> list = new LinkedList<Cloudlet>();
 
         //cloudlet parameters
         long length = 100000;
@@ -121,21 +101,16 @@ public class Main {
         int pesNumber = 1;
         UtilizationModel utilizationModel = new UtilizationModelFull();
         
-        clet[] cloudlet = new clet[cloudlets];
-        double latitude; 
-        double longitude;
-        Random random = new Random();
-
+        Cloudlet[] cloudlet = new Cloudlet[cloudlets];
+        
         for (int i = 0; i < cloudlets; i++) {
-        	 latitude = random.nextDouble()*180 -90;
-             longitude = random.nextDouble()*360 -180;
-            cloudlet[i] = new clet(idShift + i, length, pesNumber, fileSize, outputSize, utilizationModel, utilizationModel, utilizationModel, latitude, longitude);
+            cloudlet[i] = new Cloudlet(idShift + i, length, pesNumber, fileSize, outputSize, utilizationModel, utilizationModel, utilizationModel);
             // setting the owner of these Cloudlets
             cloudlet[i].setUserId(userId);
-            clist.add(cloudlet[i]);
+            list.add(cloudlet[i]);
         }
         
-        return clist;
+        return list;
     }
     
     private static Datacenter createDatacenter(String name, int hostNumber) {
@@ -151,6 +126,10 @@ public class Main {
         int bw = 10000;
         
         peList1.add(new Pe(0, new PeProvisionerSimple(mips)));
+        peList1.add(new Pe(1, new PeProvisionerSimple(mips)));
+        peList1.add(new Pe(2, new PeProvisionerSimple(mips)));
+        peList1.add(new Pe(3, new PeProvisionerSimple(mips)));
+        peList1.add(new Pe(4, new PeProvisionerSimple(mips)));
         
         for (int i = 0; i < hostNumber; i++) {
             hostList.add(
@@ -176,16 +155,9 @@ public class Main {
         double costPerBw = 0.1;			// the cost of using bw in this resource
         LinkedList<Storage> storageList = new LinkedList<Storage>();	//we are not adding SAN devices by now
 
+        DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
+                arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw);
         
-        Random random = new Random();
-        double latitude;
-        double longitude;
-        
-        latitude = random.nextDouble()*180 -90;
-        longitude = random.nextDouble()*360 -180;
-        dcCharacteristics characteristics = new dcCharacteristics(
-                arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw, latitude, longitude);
-        datacenterList.add(characteristics);
         Datacenter datacenter = null;
         try {
             datacenter = new Datacenter(name, characteristics, new VmAllocationPolicySimple(hostList), storageList, 0);
@@ -212,9 +184,8 @@ public class Main {
      * Prints the Cloudlet objects
      *
      * @param list list of Cloudlets
-     * @throws Exception 
      */
-    private static void printCloudletList(List<Cloudlet> list) throws Exception {
+    private static void printCloudletList(List<Cloudlet> list) {
         int size = list.size();
         Cloudlet cloudlet;
         
@@ -232,80 +203,84 @@ public class Main {
             if (cloudlet.getCloudletStatus() == Cloudlet.SUCCESS) {
                 Log.print("SUCCESS");
                 
-                Log.printLine(indent + indent + cloudlet.getResourceId() + indent + indent + indent + indent + cloudlet.getVmId()
+                Log.printLine(indent + indent + cloudlet.getResourceId() + indent + indent + indent + cloudlet.getVmId()
                         + indent + indent + indent + dft.format(cloudlet.getActualCPUTime())
                         + indent + indent + dft.format(cloudlet.getExecStartTime()) + indent + indent + indent + dft.format(cloudlet.getFinishTime()));
             }
         }
-//        datacenterBrokerNew dc = new datacenterBrokerNew("abcd");
-//        Map<Integer, Integer> map = dc.getVmsToDatacentersMap();
-//        Log.printLine(map);
     }
-    
-    
-    public static List<Integer> display(){
-  	  List<Integer> result = new ArrayList<Integer>();
-    	clet c;
-  	  dcCharacteristics n;
-  	  double lat1, lat2, lon1, lon2, distance, shortestDistance;
-  	  int nearestDatacenter=0, j;
-  	  
-  	  int[] usedDatacenter = new int[10];
-        int countUsedDatacenter=0;
-  	  
-  	  for(int i=0; i<10; i++){
-	    	  c = (clet) cloudletList.get(i);
-	          lat1 = c.getLatitude();
-	          lon1 = c.getLongitude();
-	          shortestDistance = 1000000000;      
-	          
-	          for(j=0; j<10; j++){
-		          int k;
-	        	  for(k = 0; k<countUsedDatacenter; k++){
-	        		  if(j==usedDatacenter[k]) {
-	        			  break;
-	        		  }
-	        	  }
-	        	  
-	        	  if(k!=countUsedDatacenter) continue;
-	        	  
-		          n = datacenterList.get(j);
-		          lat2 = n.getLatitude();
-		          lon2 = n.getLongitude();
-		          
-		          distance = getDistance(lat1, lon1, lat2, lon2);
 
-		         if(shortestDistance>distance){
-		        	  shortestDistance = distance;
-		        	  nearestDatacenter = j;
-		          }
-	          }
-	          usedDatacenter[countUsedDatacenter] = nearestDatacenter;
-	          countUsedDatacenter++;
-	          n = datacenterList.get(nearestDatacenter);
-	          int id = n.getId();
-	          result.add(id);
-	          Log.printLine("Cloudlet: " +(i+1)+",  nearest datacenter: "+ (nearestDatacenter+2) + ", Distance: "+ shortestDistance+ " km.");
-  	  }
-  	
-  	return result;
-  }
+    //Inner-Class GLOBAL BROKER...
+    public static class GlobalBroker extends SimEntity {
+        
+        private static final int CREATE_BROKER = 0;
+        private List<Vm> vmList;
+        private List<Cloudlet> cloudletList;
+        private DatacenterBroker broker;
+        
+        public GlobalBroker(String name) {
+            super(name);
+        }
+        
+        @Override
+        public void processEvent(SimEvent ev) {
+            switch (ev.getTag()) {
+                case CREATE_BROKER:
+                    setBroker(createBroker(super.getName() + "_"));
 
-  
+                    //Create VMs and Cloudlets and send them to broker
+//                    setVmList(createVM(getBroker().getId(), 5, 100)); //creating 5 vms
+//                    setCloudletList(createCloudlet(getBroker().getId(), 10, 100)); // creating 10 cloudlets
 
-  public static double getDistance(double lat1, double lon1, double lat2, double lon2) {
-      Main cl = new Main();
-  	double R = 6371; // Radius of the earth in km
-      double dLat = cl.deg2rad(lat2-lat1);  // deg2rad below
-      double dLon = cl.deg2rad(lon2-lon1); 
-      double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(cl.deg2rad(lat1)) * Math.cos(cl.deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-      double d = R * c; // Distance in km
-      return d;
-  }
-  
-  double deg2rad(double deg) {
-      return deg * (Math.PI/180);
-  }
-      
+                    
+                    broker.submitVmList(getVmList());
+                    broker.submitCloudletList(getCloudletList());
+
+//                    CloudSim.resumeSimulation();
+
+                    break;
+                
+                default:
+                    Log.printLine(getName() + ": unknown event type");
+                    break;
+            }
+        }
+        
+        @Override
+        public void startEntity() {
+            Log.printLine(CloudSim.clock() + super.getName() + " is starting...");
+            schedule(getId(), 200, CREATE_BROKER);
+            
+        }
+        
+        @Override
+        public void shutdownEntity() {
+            System.out.println("Global Broker is shutting down...");
+        }
+        
+        public List<Vm> getVmList() {
+            return vmList;
+        }
+        
+        protected void setVmList(List<Vm> vmList) {
+            this.vmList = vmList;
+        }
+        
+        public List<Cloudlet> getCloudletList() {
+            return cloudletList;
+        }
+        
+        protected void setCloudletList(List<Cloudlet> cloudletList) {
+            this.cloudletList = cloudletList;
+        }
+        
+        public DatacenterBroker getBroker() {
+            return broker;
+        }
+        
+        protected void setBroker(DatacenterBroker broker) {
+            this.broker = broker;
+        }
+    }
 }
+
