@@ -1,16 +1,13 @@
 package cloudsim;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.FileWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
-
-//import javafx
-//import java.util.Map;
-import java.util.Random;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -28,30 +25,25 @@ import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.VmSchedulerSpaceShared;
-import cloudsim.clet;
-//import org.cloudbus.cloudsim.datacenterBrokerNew;
-import cloudsim.dcCharacteristics;
-//import org.cloudbus.cloudsim.newBroker;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 
-/**
- *
- * @author Mahbub
- * 
- */
-			
-public class Main {
-    
-    private static List<Cloudlet> cloudletList;
+public class ClusterMethod {
+	private static List<Cloudlet> cloudletList;
     private static List<Vm> vmlist;
-    public static List<dcCharacteristics> datacenterList = new ArrayList<dcCharacteristics>();
+    private static List<dcCharacteristics> datacenterList = new ArrayList<dcCharacteristics>();
+    private static List<Double> dcLocHolderLongList = new ArrayList<>();
+    private static List<Double> clLocHolderLongList = new ArrayList<>();
+    
+    private static List<Double> dcLocHolderLatiList = new ArrayList<>();
+    private static List<Double> clLocHolderLatiList = new ArrayList<>();
+    
     
     //Gui to take input
-    public static String Data = JOptionPane.showInputDialog(new JFrame(),"Enter Data centers"); 
-	public static int input = Integer.parseInt(Data);
+    //public static String Data = JOptionPane.showInputDialog(new JFrame(),"Enter Datapoints"); 
+	public static int input;
     
     public static void main(String[] args) throws Exception {
         int num_user = 100;
@@ -62,14 +54,14 @@ public class Main {
         
 		
         //Creating 10 Datacenters - each one has 1 host with 5 PEs
-        //clear previous data 
-        clearPrevText();
-        iWriteToFile(input);
         int i;
+        readFromFile();
         Datacenter[] dc = new Datacenter[input];
+        dcReadFromFile();
+        //Testing
         for(i=0; i<input; i++){
         	//@SuppressWarnings("unused")
-        	dc[i] = createDatacenter("DC"+i, 1);
+        	dc[i] = createDatacenter("DC"+i, 1, i);
         }
         
         DatacenterBroker brk = createBroker("BoosBroker");
@@ -81,27 +73,33 @@ public class Main {
         brk.submitVmList(vmlist);
         
         
+        KMeansCluster kmc = new KMeansCluster();
+        ResultListsObj resultObj = kmc.kmeans(cloudletList, datacenterList);
         
-        List<Integer> result1 = new ArrayList<Integer>();
-        result1 = display();
-        
-        i=1;
-        for(Integer r : result1){
-        	brk.bindCloudletToVm(i, r-1);
-        	i++;
+        System.out.println("Testing --------------------------");
+        for (i = 0; i < input; ++i)
+        {
+        	brk.bindCloudletToVm(resultObj.getCl().get(i).getCloudletId(), resultObj.getDc().get(i).getId() - 1);
         }
+//        result1 = display();
+        
+//        i=1;
+//        for(Integer r : result1){
+//        	brk.bindCloudletToVm(i, r-1);
+//        	i++;
+//        }
+        
         
         CloudSim.startSimulation();        
         CloudSim.stopSimulation();
         
-        display();
+        //display();
         printCloudletList(cloudletList);
+        //Testing
         
 
         
-        
-       // KMeansCluster kmc = new KMeansCluster();
-        //kmc.kmeans(cloudletList, datacenterList);
+
         JOptionPane.showMessageDialog(new JFrame(), "Simulation Completed");
         
     }
@@ -143,13 +141,13 @@ public class Main {
         clet[] cloudlet = new clet[cloudlets];
         double latitude; 
         double longitude;
-        Random random = new Random();
+        clReadFromFile();
+//        Random random = new Random();
 
         for (int i = 0; i < cloudlets; i++) {
-        	 latitude = random.nextDouble()*180 -90;
-             longitude = random.nextDouble()*360 -180;
+        	 latitude = clLocHolderLatiList.get(i);
+             longitude = clLocHolderLongList.get(i);
            //Write to file for further simulation
-             cWriteToFile(latitude, longitude);
             cloudlet[i] = new clet(idShift + i, length, pesNumber, fileSize, outputSize, utilizationModel, utilizationModel, utilizationModel, latitude, longitude);
             // setting the owner of these Cloudlets
             cloudlet[i].setUserId(userId);
@@ -159,7 +157,7 @@ public class Main {
         return clist;
     }
     
-    private static Datacenter createDatacenter(String name, int hostNumber) throws IOException {
+    private static Datacenter createDatacenter(String name, int hostNumber, int position) throws IOException {
         
         
         List<Host> hostList = new ArrayList<Host>();
@@ -198,14 +196,12 @@ public class Main {
         LinkedList<Storage> storageList = new LinkedList<Storage>();	//we are not adding SAN devices by now
 
         
-        Random random = new Random();
-        double latitude;
-        double longitude;
+
+        double latitude = dcLocHolderLatiList.get(position); 
+        double longitude = dcLocHolderLongList.get(position);
         
-        latitude = random.nextDouble()*180 -90;
-        longitude = random.nextDouble()*360 -180;
+
         //Write to file for further simulation
-        dWriteToFile(latitude, longitude);
         dcCharacteristics characteristics = new dcCharacteristics(
                 arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw, latitude, longitude);
         datacenterList.add(characteristics);
@@ -266,60 +262,60 @@ public class Main {
     }
     
     
-    public static List<Integer> display(){
-      	
-  	  List<Integer> result = new ArrayList<Integer>();
-      clet c;
-  	  dcCharacteristics n;
-  	  double lat1, lat2, lon1, lon2, distance, shortestDistance;
-  	  int nearestDatacenter=0, j;
-  	  
-  	  int[] usedDatacenter = new int[input];
-        int countUsedDatacenter=0;
-  	  
-  	  for(int i=0; i<input; i++){
-	    	  c = (clet) cloudletList.get(i);
-	          lat1 = c.getLatitude();
-	          lon1 = c.getLongitude();
-	          shortestDistance = 1000000000;      
-	          
-	          for(j=0; j<input; j++){
-		          int k;
-	        	  for(k = 0; k<countUsedDatacenter; k++){
-	        		  if(j==usedDatacenter[k]) {
-	        			  break;
-	        		  }
-	        	  }
-	        	  
-	        	  if(k!=countUsedDatacenter) continue;
-	        	  
-		          n = datacenterList.get(j);
-		          lat2 = n.getLatitude();
-		          lon2 = n.getLongitude();
-		          
-		          distance = getDistance(lat1, lon1, lat2, lon2);
-
-		         if(shortestDistance>distance){
-		        	  shortestDistance = distance;
-		        	  nearestDatacenter = j;
-		          }
-	          }
-	          usedDatacenter[countUsedDatacenter] = nearestDatacenter;
-	          countUsedDatacenter++;
-	          n = datacenterList.get(nearestDatacenter);
-	          int id = n.getId();
-	          result.add(id);
-	          Log.printLine("Cloudlet: " +(i+1)+",  nearest datacenter: "+ (nearestDatacenter+2) + ", Distance: "+ shortestDistance+ " km.");
-  	  }
-  	
-  	return result;
-  }
-
-  
+//    public static List<Integer> display(){
+//      	
+//  	  List<Integer> result = new ArrayList<Integer>();
+//      clet c;
+//  	  dcCharacteristics n;
+//  	  double lat1, lat2, lon1, lon2, distance, shortestDistance;
+//  	  int nearestDatacenter=0, j;
+//  	  
+//  	  int[] usedDatacenter = new int[input];
+//        int countUsedDatacenter=0;
+//  	  
+//  	  for(int i=0; i<input; i++){
+//	    	  c = (clet) cloudletList.get(i);
+//	          lat1 = c.getLatitude();
+//	          lon1 = c.getLongitude();
+//	          shortestDistance = 1000000000;      
+//	          
+//	          for(j=0; j<input; j++){
+//		          int k;
+//	        	  for(k = 0; k<countUsedDatacenter; k++){
+//	        		  if(j==usedDatacenter[k]) {
+//	        			  break;
+//	        		  }
+//	        	  }
+//	        	  
+//	        	  if(k!=countUsedDatacenter) continue;
+//	        	  
+//		          n = datacenterList.get(j);
+//		          lat2 = n.getLatitude();
+//		          lon2 = n.getLongitude();
+//		          
+//		          distance = getDistance(lat1, lon1, lat2, lon2);
+//
+//		         if(shortestDistance>distance){
+//		        	  shortestDistance = distance;
+//		        	  nearestDatacenter = j;
+//		          }
+//	          }
+//	          usedDatacenter[countUsedDatacenter] = nearestDatacenter;
+//	          countUsedDatacenter++;
+//	          n = datacenterList.get(nearestDatacenter);
+//	          int id = n.getId();
+//	          result.add(id);
+//	          Log.printLine("Cloudlet: " +(i+1)+",  nearest datacenter: "+ (nearestDatacenter+2) + ", Distance: "+ shortestDistance+ " km.");
+//  	  }
+//  	
+//  	return result;
+//  }
+//
+//  
 
   public static double getDistance(double lat1, double lon1, double lat2, double lon2) {
-      Main cl = new Main();
-  	double R = 6371; // Radius of the earth in km
+	  ClusterMethod cl = new ClusterMethod();
+  	  double R = 6371; // Radius of the earth in km
       double dLat = cl.deg2rad(lat2-lat1);  // deg2rad below
       double dLon = cl.deg2rad(lon2-lon1); 
       double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(cl.deg2rad(lat1)) * Math.cos(cl.deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -332,46 +328,44 @@ public class Main {
       return deg * (Math.PI/180);
   }
   
-  private static void dWriteToFile(double latitude, double longitude) throws IOException{
-	  FileWriter fw = new FileWriter("dLocation.txt", true);
-	  fw.write(latitude + "\n" + longitude + "\n");
-	  fw.close();
-	  
-	  
-  }
-  
-  private static void cWriteToFile(double latitude, double longitude) throws IOException{
-	  FileWriter fw = new FileWriter("cLocation.txt", true);
-	  fw.write(latitude + "\n" + longitude + "\n");
-	  fw.close();
-	  
-	  
-  }
-  
-  private static void iWriteToFile(int m) throws IOException{
-	  FileWriter fw = new FileWriter("input.txt", true);
-	  
-	  fw.write(Integer.toString(m));
-	  fw.close();  
-	  
-  }
-  
-  private static void clearPrevText() throws IOException{
-	  FileWriter fw = new FileWriter("input.txt");
-	  FileWriter fw1 = new FileWriter("dLocation.txt");
-	  FileWriter fw2 = new FileWriter("cLocation.txt");
-	  fw.write("");
-	  fw1.write("");
-	  fw2.write("");
-	  System.out.println();
-	  System.out.println();
-	  System.out.println(input);
-	  System.out.println();
-	  System.out.println();
-	  fw.close();
-	  fw1.close();
-	  fw2.close();
+  private static void readFromFile() throws IOException{
+	  FileReader reader = new FileReader("input.txt");
+	  BufferedReader bufferedReader = new BufferedReader(reader);
+	  String str = bufferedReader.readLine();
+	  input = Integer.parseInt(str);
+	  bufferedReader.close();
 	  	  
   }
+  
+  private static void dcReadFromFile() throws IOException{
+	  Centroid dc = new Centroid();
+	  FileReader reader = new FileReader("dLocation.txt");
+	  BufferedReader bufferedReader = new BufferedReader(reader);
+	  String str;
+	  while((str = bufferedReader.readLine()) != null) {
+		  dcLocHolderLatiList.add(Double.parseDouble(str));
+		  str = bufferedReader.readLine();
+		  dcLocHolderLongList.add(Double.parseDouble(str));
+		  
+	  }
+	  reader.close();	
+
+  }
+  
+  private static void clReadFromFile() throws IOException{
+	  Centroid cl = new Centroid();
+	  FileReader reader = new FileReader("cLocation.txt");
+	  BufferedReader bufferedReader = new BufferedReader(reader);
+	  String str;
+	  while((str = bufferedReader.readLine()) != null) {
+		  clLocHolderLatiList.add(Double.parseDouble(str));
+		  str = bufferedReader.readLine();
+		  clLocHolderLongList.add(Double.parseDouble(str));
+		  
+	  }
+	  reader.close();	
+
+  }
+
       
 }

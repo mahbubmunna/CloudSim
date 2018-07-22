@@ -1,18 +1,16 @@
 package cloudsim;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.cloudbus.cloudsim.Cloudlet;
 
-import sun.rmi.runtime.Log;
 
 public class KMeansCluster {
 	private List<Cloudlet> clist;
 	private List<dcCharacteristics> dlist;
 
-	public void kmeans(List<Cloudlet>clist, List<dcCharacteristics> dlist) {
+	public ResultListsObj kmeans(List<Cloudlet>clist, List<dcCharacteristics> dlist) {
 	    this.setClist(clist);
 	    this.setDlist(dlist);
 	    
@@ -148,7 +146,8 @@ public class KMeansCluster {
 	    			System.out.print(dc.getId() + " ");
 	    		System.out.println();
 	    	}
-	    } while (flag);
+	    	
+	    } while (flag && iteratorCounter != 100);
 	    
 	    //Printing final clusters
 	    System.out.println();
@@ -157,8 +156,12 @@ public class KMeansCluster {
 	    counter = 0;
 	    for (List <dcCharacteristics> cluster : dcCluster) {
 	    		System.out.print("Datacenter Cluster " + ++counter + ": ");
-	    		for (dcCharacteristics dc : cluster) 
-	    			System.out.print(dc.getId() + " ");		
+	    		for (dcCharacteristics dc : cluster) {
+	    			System.out.print(dc.getId() + " ");	
+	    			System.out.println(dc.getLatitude());
+	    			System.out.println(dc.getLongitude());
+	    		}
+	    				
 	    		System.out.println();
     	}
 	    
@@ -171,6 +174,50 @@ public class KMeansCluster {
 	    		System.out.print(cl.getCloudletId() + " ");
 	    	System.out.println();
 	    }
+	    
+	    //arranging the result list for binding perfectly 
+	    List<dcCharacteristics> tempDc = new ArrayList<>();
+	    List<clet> tempCl = new ArrayList<>();
+	    dlist.clear();
+	    clist.clear();
+	    int min = 0, max = 0;
+	    boolean dcTrue = true;
+	    for (int i = 0; i < dcCluster.size(); ++i) {
+	    	//taking the least cluster size of same position
+	    	if (dcCluster.get(i).size() < clCluster.get(i).size()) {
+	    		min = dcCluster.get(i).size();
+	    		max = clCluster.get(i).size();
+	    		dcTrue = false; // flag to work with TempCl list
+	    	}
+	    	else {
+	    		min = clCluster.get(i).size();
+	    		max = dcCluster.get(i).size();
+	    		dcTrue = true; // flag to work with TempDc list
+	    	}
+	    	//maping based on least cluster size
+	    	for (int j = 0; j < min; ++j) {
+	    		dlist.add(dcCluster.get(i).get(j));
+	    		clist.add(clCluster.get(i).get(j));
+	    	}
+	    	for (int j = min; j < max; ++j) {
+	    		//stores the extra data points which are not getting clusters
+	    		if (dcTrue) tempDc.add(dcCluster.get(i).get(j));
+	    		else tempCl.add(clCluster.get(i).get(j));
+	    	}
+	    }
+	    
+	    //joint the temp to dlist and clist to make it full
+	    dlist.addAll(tempDc);
+	    clist.addAll(tempCl);
+	    
+	    //make a resultList object to return that for further binding
+	    ResultListsObj resultList = new ResultListsObj();
+	    resultList.setDc(dlist);
+	    resultList.setCl(clist);
+	    
+	    return resultList;
+	    
+	    
 	    
 //	    //Test
 //	    System.out.println("Centroid Values:");

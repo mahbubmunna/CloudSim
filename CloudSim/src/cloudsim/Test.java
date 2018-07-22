@@ -30,10 +30,9 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
  *
  * @author Mário Pardo
  */
-public class TwoDatacenters10VMs5ForEach {
+public class Test {
     
-    private static List<Cloudlet> cloudletList;
-    private static List<Vm> vmlist;
+    
     
     public static void main(String[] args) {
         int num_user = 2;
@@ -43,8 +42,8 @@ public class TwoDatacenters10VMs5ForEach {
 
   
         //Creating 2 Datacenters - each one has 1 host with 5 PEs
-        Datacenter dc1 = createDatacenter("DC1", 1);
-        Datacenter dc2 = createDatacenter("DC2", 1);
+        createDatacenter("DC1", 1);
+        createDatacenter("DC2", 1);
         
         
         DatacenterBroker brk1 = createBroker("broker1");

@@ -2,6 +2,10 @@ package cloudsim;
 
 public class Centroid {
 	private double latitude, longitude;
+	
+	public Centroid() {
+		
+	}
 
 	public Centroid(double latitude, double longitude) {
 		super();
